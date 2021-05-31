@@ -14,17 +14,19 @@ class Node:
     START_NODE = None
     END_NODE = None
     SIZE = 90
+    X_OFFSET = 0
     def __init__(self, x, y, color, type, g = 0, h = 0):
         self.x: int = x
         self.y: int = y
         self.color = color
         self.type: int = type
-        self.rect: Rect = Rect(Node.SIZE*x, Node.SIZE*y, Node.SIZE, Node.SIZE)
         if type == Node.TYPE_START:
             Node.START_NODE = self
         elif type == Node.TYPE_END:
             Node.END_NODE = self
         self.parrent: Node = None
+    def setUpRect(self) -> Rect:
+        self.rect: Rect = Rect(Node.SIZE*self.x+Node.X_OFFSET, Node.SIZE*self.y, Node.SIZE, Node.SIZE)
     def getArrow(self) -> str:
         if self.parrent == None:
             return ""

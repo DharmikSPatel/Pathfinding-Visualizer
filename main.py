@@ -1,23 +1,25 @@
 from io import TextIOWrapper
-from pygame import time
+from math import inf
 from node import Node
-import pygame
-from pygame import *
-from pygame import draw
+
 from queue import PriorityQueue
-import time
+
+import pygame as pygame
+from pygame import font,display,draw,time
+from pygame.time import Clock
 from pygame.locals import *
-from pygame import font
-from pygame import display
+
+from pygame_widgets import Button
 
 pygame.init()
 screen = display.set_mode([1000, 900])
+EMPTY_COLOR = "gray"
 BACKGROUND_COLOR = (37, 59, 89)
 STARTING_NODE_COLOR = (191, 60, 31)
 ENDING_NODE_COLOR = (57, 115, 77)
 PATH_COLOR = (242, 197, 61)
 WALL_COLOR = (8, 27, 38)
-WHITE = "white"
+LINE_COLOR = "white"
 OPEN_NODE_COLOR = (217, 113, 151)
 CLOSED_NODE_COLOR = (91, 123, 166)
 font1: font.Font = font.SysFont("Arial", 15)
@@ -25,32 +27,36 @@ font1: font.Font = font.SysFont("Arial", 15)
 
 
 maze = []
-startingNode = None
-
-
 
 def createMazeFromFile(fileName: str):
     with open(fileName, "r") as mazeFile:
-        y: int = 0
+        maxRow: int = 0
+        maxCol: int = 0
         for line in mazeFile:
             maze.append([])
-            for x in range(len(line)):
+            maxCol = len(line)
+            for x in range(maxCol):
                 letter: str = line[x]
                 if letter == "*":
-                    maze[y].append(Node(x, y, BACKGROUND_COLOR, Node.TYPE_EMPTY))
+                    maze[maxRow].append(Node(x, maxRow, EMPTY_COLOR, Node.TYPE_EMPTY))
                 elif letter == "w":
-                    maze[y].append(Node(x, y, WALL_COLOR, Node.TYPE_WALL))
+                    maze[maxRow].append(Node(x, maxRow, WALL_COLOR, Node.TYPE_WALL))
                 elif letter == "s":
-                    maze[y].append(Node(x, y, STARTING_NODE_COLOR, Node.TYPE_START))
+                    maze[maxRow].append(Node(x, maxRow, STARTING_NODE_COLOR, Node.TYPE_START))
                 elif letter == "e":
-                    maze[y].append(Node(x, y, ENDING_NODE_COLOR, Node.TYPE_END))
-            y+=1
+                    maze[maxRow].append(Node(x, maxRow, ENDING_NODE_COLOR, Node.TYPE_END))
+            maxRow+=1
+        Node.SIZE = int(1000/max(maxRow, maxCol))
+        Node.X_OFFSET = int((1000-(Node.SIZE*maxCol))/2)
+        for row in maze:
+            for node in row:
+                node.setUpRect()
 
 def createMaze(x, y, r, c, start, end):  
     for i in range(r):
         maze.append([])
         for j in range(c):
-            color = BACKGROUND_COLOR
+            color = EMPTY_COLOR
             type = Node.TYPE_EMPTY
             if (i, j) == start:
                 color = STARTING_NODE_COLOR
@@ -64,36 +70,55 @@ def drawMaze():
     for i in range(len(maze)):
         for j in range(len(maze[i])):
             draw.rect(screen, maze[i][j].color, maze[i][j].rect)
-            imgFont = font1.render(f" {maze[i][j].getGCost()}+{maze[i][j].getHCost()}={str(maze[i][j].getFCost()) + maze[i][j].getArrow()}", True, WHITE)
-            screen.blit(imgFont, maze[i][j].rect)
+            #imgFont = font1.render(f" {maze[i][j].getGCost()}+{maze[i][j].getHCost()}={str(maze[i][j].getFCost()) + maze[i][j].getArrow()}", True, WHITE)
+            #screen.blit(imgFont, maze[i][j].rect)
     
     start = 0
     end = len(maze)*Node.SIZE
-    for i in range(len(maze[0])):
-        draw.line(screen, WHITE, (Node.SIZE*i, start), (Node.SIZE*i, end))
-    draw.line(screen, WHITE, (Node.SIZE*(i+1), start), (Node.SIZE*(i+1), end))
+    for i in range(len(maze[0])+1):
+        draw.line(screen, LINE_COLOR, (Node.SIZE*i+Node.X_OFFSET, start), (Node.SIZE*i+Node.X_OFFSET, end))
     
-    start = 0
-    end = len(maze[0])*Node.SIZE
-    for i in range(len(maze)):
-        draw.line(screen, WHITE, (start, Node.SIZE*i), (end, Node.SIZE*i))
-    draw.line(screen, WHITE, (start, Node.SIZE*(i+1)), (end, Node.SIZE*(i+1)))
-    
+    start = +Node.X_OFFSET
+    end = len(maze[0])*Node.SIZE+Node.X_OFFSET
+    for i in range(len(maze)+1):
+        draw.line(screen, LINE_COLOR, (start, Node.SIZE*i), (end, Node.SIZE*i))
     
 
-#createMaze(0, 0, 6, 11, (4, 7), (1, 4))
-#createMaze(0, 0, 10, 10, (2, 4), (9, 9))
-#createMazeFromFile("maze.txt")
-createMazeFromFile("maze2.txt")
+createMazeFromFile("maze.txt")
 open = PriorityQueue() #all the nodes that r looked at
 open.put(Node.START_NODE)
 closed = [] #currnt path list, more exlcuisve, so all the nodes that cause expansion
+
+
+
+startButton = Button(screen, 700, 20, 100, 40, text="Start", onClick=lambda : print("clicked"))
+stepSpeed = 0
+stepThreshold = 0
+
+def events() -> bool:
+    stop = False
+    gameEvents = pygame.event.get()
+    for event in gameEvents:
+        if event.type == pygame.QUIT:
+            stop = True
+    startButton.listen(gameEvents)
+
+    return not stop
+
+def drawMenu():
+    startButton.draw()
+
+
 
 def Astar() -> bool:
     bestNode: Node = open.get(timeout=1)
     bestNode.color = CLOSED_NODE_COLOR if bestNode.type != Node.TYPE_START else STARTING_NODE_COLOR
     closed.append(bestNode)
     if bestNode is Node.END_NODE:
+        for row in maze:
+            for node in row:
+                if node.type == Node.TYPE_EMPTY:
+                    node.color = EMPTY_COLOR
         bestNode.highlightPath(PATH_COLOR, STARTING_NODE_COLOR, ENDING_NODE_COLOR)
         return True
     for i in range(max(bestNode.y-1, 0), min(bestNode.y+2, len(maze))):
@@ -117,20 +142,27 @@ def Astar() -> bool:
     
                 
                 
-
+gameClock = Clock()
 
 running: bool = True
 winnerFound: bool = False
 while running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
+    running = events()
+
+    
     screen.fill(BACKGROUND_COLOR)
-    if not winnerFound:
-        winnerFound = Astar()
-    if winnerFound:
-        print("Winner found")
+
+    drawMenu()
+
+    if time.get_ticks() >= stepThreshold:
+        if not winnerFound:
+            winnerFound = Astar()
+        if winnerFound:
+            pass
+        stepThreshold+=stepSpeed
+    
     drawMaze()
     pygame.display.flip()
-    time.sleep(0.1)
+    #gameClock.tick(30)
+    
 pygame.quit()
