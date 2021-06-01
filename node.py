@@ -1,7 +1,7 @@
 from time import sleep
 from pygame import Rect, math
 from functools import total_ordering
-import queue
+from colors import *
 import math
 
 
@@ -46,24 +46,12 @@ class Node:
             return "←↓"
         if self.parrent.x == self.x-1 and self.parrent.y == self.y:
             return "←"
-    def highlightPath(self, pathColor, startColor, endColor):
+    def highlightPath(self):
         if self.type != Node.TYPE_START and self.parrent != None:
-            self.color = endColor if self.type == Node.TYPE_END else pathColor
-            self.parrent.highlightPath(pathColor, startColor, endColor)
+            self.color = ENDING_NODE_COLOR if self.type == Node.TYPE_END else PATH_COLOR
+            self.parrent.highlightPath()
         elif self.type == Node.TYPE_START:
-            self.color = startColor
-        
-        
-        """
-        if self.type == Node.END_NODE:
-            self.color = endColor
-            self.parrent.highlightPath(pathColor, startColor, endColor)
-        elif self.type == Node.START_NODE:
-            self.color = startColor
-        else:
-            self.color = pathColor
-            self.parrent.highlightPath(pathColor, startColor, endColor)
-        """
+            self.color = STARTING_NODE_COLOR
     def getGCost(self):
         if self.type != Node.TYPE_START and self.parrent != None:
             return self.parrent.getGCost() + int(math.sqrt((self.parrent.y - self.y)**2 + (self.parrent.x - self.x)**2)*10)
@@ -72,13 +60,7 @@ class Node:
         changeX: int = abs(Node.END_NODE.x - self.x)
         changeY: int = abs(Node.END_NODE.y - self.y)
         return int(math.sqrt((min(changeX, changeY))**2 + (min(changeX, changeY))**2)*10)+10*abs(changeY-changeX)
-        '''
-        directPath:int = int(math.sqrt((Node.END_NODE.y - self.y)**2 + (Node.END_NODE.x - self.x)**2)*10)
-        if directPath%14 == 0:
-            return directPath
-        else:
-            return directPath 
-        '''
+
     def getFCost(self):
         return self.getGCost() + self.getHCost()
 
